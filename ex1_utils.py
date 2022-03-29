@@ -171,3 +171,17 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarr
     return image_history, MSE
 
 
+def update_image(imOrig: np.ndarray, histOrig: np.ndarray, yiqIm: np.ndarray, arrayQuantize: np.ndarray) -> (
+        np.ndarray, float):
+    """
+        update the quantization on the original image
+        :return: returning the resulting image and the MSE.
+    """
+    imageQ = np.interp(imOrig, np.linspace(0, 1, 255), arrayQuantize)
+    curr_hist = np.histogram(imageQ, bins=256)[0]
+    err = np.sqrt(np.sum((histOrig.astype('float') - curr_hist.astype('float')) ** 2)) / float(
+        imOrig.shape[0] * imOrig.shape[1])
+    if len(yiqIm):  # if the original image is RGB
+        yiqIm[:, :, 0] = imageQ / 255
+        return transformYIQ2RGB(yiqIm), err
+    return imageQ, err

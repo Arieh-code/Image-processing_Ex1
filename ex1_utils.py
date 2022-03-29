@@ -90,38 +90,29 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarra
         :ret
     """
 
+    RGB = False
+    if len(imgOrig.shape) == 3:  # if the image is RGB
+        RGB = True
+        yiqIm = transformRGB2YIQ(imgOrig)
+        imgOrig = yiqIm[:, :, 0]
+    # change image from [0,1] t0 [0,255]
+    imgOrig = cv2.normalize(imgOrig, None, 0, 255, cv2.NORM_MINMAX)
+    imgOrig = imgOrig.astype('uint8')
 
-    # change range of imgOrig from [0, 1] to [0, 255] and normalize the image
-    imgOrig_normalize = cv2.normalize(imgOrig, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    imgOrig_normalize = imgOrig_normalize.astype(np.uint8)
+    # flatten the image
+    histOrig = np.histogram(imgOrig.flatten(), bins=256)[0]
+    C_sum = np.cumsum(histOrig)
+    imgNew = C_sum[imgOrig]
+    imgNew = cv2.normalize(imgNew, None, 0, 255, cv2.NORM_MINMAX)
+    imgNew = imgNew.astype('uint8')
+    histNew = np.histogram(imgNew.flatten(), bins=256)[0]
 
-    # Calculate the old image histogram (range = [0, 255]), i used cv calchist
-    # histOrg = cv2.calcHist([imgOrig_normalize], [0], None, [256], [0, 256])
-    img_flat = imgOrig_normalize.ravel()
-    hist = np.zeros(256)
-    for val in img_flat:
-        hist[val] += 1
+    # if the image was in color then need to transform back to from yiq to rgb
+    if RGB:
+        yiqIm[:, :, 0] = imgNew / (imgNew.max() - imgNew.min())
+        imgNew = transformYIQ2RGB(yiqIm)
 
-    # Calculate the normalized Cumulative Sum (CumSum)
-    C_sum = np.cumsum(hist)
-
-    # Create a LookUpTable(LUT)
-    look_ut = np.floor((C_sum / C_sum.max()) * 255)
-
-    # Replace each intensity i with LUT[i]
-    imgEq = np.zeros_like(imgOrig, dtype=float)
-    for i in range(256):
-        imgEq[imgOrig_normalize == i] = int(look_ut[i])
-
-    # Calculate the new image histogram (range = [0, 255])
-    histEQ = np.zeros(256)
-    for val in range(256):
-        histEQ[val] = np.count_nonzero(imgEq == val)
-
-    # norm imgEQ from range [0, 255] to range [0, 1]
-    imgEq = imgEq / 255.0
-
-    return imgEq, hist, histEQ
+    return imgNew, histOrig, histNew
 
 
 def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarray], List[float]):

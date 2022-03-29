@@ -123,7 +123,51 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarr
         :param nIter: Number of optimization loops
         :return: (List[qImage_i],List[error_i])
     """
-    pass
 
+    if len(imOrig.shape) == 3:
+        imYIQ = transformRGB2YIQ(imOrig)
+        imY = imYIQ[:, :, 0].copy()  # take only the y chanel
+    else:
+        imY = imOrig
+    histOrig = np.histogram(imY.flatten(), bins=256)[0]
+    # finding the best center
+    Z_borders = []
+    Q_level = []
+    # head start, all the intervals are in the same length
+    z = np.arange(0, 256, round(256 / nQuant))
+    z = np.append(z, [255])
+    Z_borders.append(z.copy())
+    # find Q using weighted average on the histogram
+    q = [np.average(np.arange(z[k], z[k + 1] + 1), weights=histOrig[z[k]: z[k + 1] + 1]) for k in range(len(z) - 1)]
+    q = np.round(q).astype(int)
+    Q_level.append(q.copy())
+
+    # finding the best nQuant center in nIter steps or when error is minimum
+    for n in range(nIter):
+        # finding Z using the formula from lecture
+        z = np.array([round((q[i - 1] + q[i]) / 2) for i in range(1, len(q))]).astype(int)
+        z = np.concatenate(([0], z, [255]))
+        if (Z_borders[-1] == z).all():  # break if nothing changed
+            break
+        Z_borders.append(z.copy())
+
+        # fixing q in loop and adding it to Q array
+        q = [np.average(np.arange(z[k], z[k + 1] + 1), weights=histOrig[z[k]: z[k + 1] + 1]) for k in
+             range(len(z) - 1)]
+        q = np.round(q).astype(int)
+        Q_level.append(q.copy())
+
+    image_history = [imOrig.copy()]
+    MSE = []
+    for i in range(len(Z_borders)):
+        arrayQuantize = np.array([Q_level[i][k] for k in range(len(Q_level[i])) for x in range(Z_borders[i][k], Z_borders[i][k + 1])])
+        if len(imOrig.shape) == 3:
+            q_img, e = update_image(imY, histOrig, imYIQ, arrayQuantize)
+        else:
+            q_img, e = update_image(imY, histOrig, [], arrayQuantize)
+        image_history.append(q_img)
+        MSE.append(e)
+
+    return image_history, MSE
 
 

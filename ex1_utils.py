@@ -107,7 +107,7 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarra
     imgNew = imgNew.astype('uint8')
     histNew = np.histogram(imgNew.flatten(), bins=256)[0]
 
-    # if the image was in color then need to transform back to from yiq to rgb
+    # if the image was in color then I need to transform back to from yiq to rgb
     if RGB:
         yiqIm[:, :, 0] = imgNew / (imgNew.max() - imgNew.min())
         imgNew = transformYIQ2RGB(yiqIm)
@@ -124,3 +124,6 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarr
         :return: (List[qImage_i],List[error_i])
     """
     pass
+
+
+
